@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <vector>
 
 class ComplexNumber {
 public:
@@ -183,34 +184,45 @@ public:
 	}
 };
 
+class TwoPortNetwork : public TwoPortElement {
+public:
+	void add(TwoPortElement* element) {
+		elements.push_back(element);
+	}
+
+	TransferMatrix getTransferMatrixAtFrequency(double f) override {
+		TransferMatrix result(1, 0, 0, 1); // identity complex matrix
+
+		if (!elements.empty()) {
+			for (auto& e : elements) {
+				result = result * e->getTransferMatrixAtFrequency(f);
+			}
+		}
+
+		return result;
+	}
+
+	std::vector<TwoPortElement*> elements;
+};
+
 
 int main() {
 
-	ShuntCapacitor c1(80.35);
-	SeriesInductor l1(44.11);
-	ShuntCapacitor c2(106.16);
-	SeriesInductor l2(46.15);
-	ShuntCapacitor c3(107.48);
-	SeriesInductor l3(46.15);
-	ShuntCapacitor c4(106.16);
-	SeriesInductor l4(44.11);
-	ShuntCapacitor c5(80.35);
-	SeriesResistor rSource(50);
-	ShuntResistor rLoad(50);
+	TwoPortNetwork network;
+	network.add(new SeriesResistor(50)); // source R
+	network.add(new ShuntCapacitor(80.35));
+	network.add(new SeriesInductor(44.11));
+	network.add(new ShuntCapacitor(106.16));
+	network.add(new SeriesInductor(46.15));
+	network.add(new ShuntCapacitor(107.48));
+	network.add(new SeriesInductor(46.15));
+	network.add(new ShuntCapacitor(106.16));
+	network.add(new SeriesInductor(44.11));
+	network.add(new ShuntCapacitor(80.35));
+	network.add(new ShuntResistor(50)); // load R
 
 	for (double frequency = 0; frequency <= 220000000; frequency += 200000) {
-		TransferMatrix filter = rSource.getTransferMatrixAtFrequency(frequency) *
-								c1.getTransferMatrixAtFrequency(frequency) * 
-								l1.getTransferMatrixAtFrequency(frequency) *
-								c2.getTransferMatrixAtFrequency(frequency) * 
-								l2.getTransferMatrixAtFrequency(frequency) *
-								c3.getTransferMatrixAtFrequency(frequency) * 
-								l3.getTransferMatrixAtFrequency(frequency) *
-								c4.getTransferMatrixAtFrequency(frequency) * 
-								l4.getTransferMatrixAtFrequency(frequency) *
-								c5.getTransferMatrixAtFrequency(frequency) * 
-								rLoad.getTransferMatrixAtFrequency(frequency);
-
+		TransferMatrix filter = network.getTransferMatrixAtFrequency(frequency);
 
 		double outVoltage = 1.0/magnitude(filter.A);
 		double outGain = 20.0 * log10(outVoltage); // out/in
