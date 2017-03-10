@@ -88,25 +88,36 @@ std::ostream& operator << (std::ostream& out, const VoltageAndCurrent& vi) {
 
 class TwoPortElement {
 public:
-	virtual TransferMatrix getSeriesTransferMatrixAtFrequency(double f) = 0;
-	virtual TransferMatrix getShuntTransferMatrixAtFrequency(double f) = 0;
+	virtual TransferMatrix getTransferMatrixAtFrequency(double f) = 0;
 };
 
 class Resistor : public TwoPortElement {
 public:
-
 	Resistor(double r) : resistance(r) {}
 
-	TransferMatrix getSeriesTransferMatrixAtFrequency(double f) override {
-		return TransferMatrix(1, -resistance, 0, 1);
-	}
-
-	TransferMatrix getShuntTransferMatrixAtFrequency(double f) override {
-		return TransferMatrix(1, 0, -1.0/resistance, 1);
-	}
+	virtual TransferMatrix getTransferMatrixAtFrequency(double f) = 0;
 
 	double resistance;
 };
+
+class SeriesResistor : public Resistor {
+public:
+	SeriesResistor(double r) : Resistor(r) {}
+
+	TransferMatrix getTransferMatrixAtFrequency(double f) override {
+		return TransferMatrix(1, -resistance, 0, 1);
+	}
+};
+
+class ShuntResistor : public Resistor {
+public:
+	ShuntResistor(double r) : Resistor(r) {}
+
+	TransferMatrix getTransferMatrixAtFrequency(double f) override {
+		return TransferMatrix(1, 0, -1.0/resistance, 1);
+	}
+};
+
 
 double xc(double picofarads, double hz) {
 	return 1.0/(2.0 * M_PI * hz * picofarads/1000000000000.0);
@@ -118,154 +129,93 @@ double xl(double microhenries, double hz) {
 
 class Capacitor : public TwoPortElement {
 public:
-
 	Capacitor(double c) : capacitance(c) {}
 
-	TransferMatrix getSeriesTransferMatrixAtFrequency(double f) override {
-		return TransferMatrix(1, ComplexNumber(0, -xc(capacitance, f)), 0, 1);
-	}
-
-	TransferMatrix getShuntTransferMatrixAtFrequency(double f) override {
-		return TransferMatrix(1, 0, ComplexNumber(0, -1.0/xc(capacitance, f)), 1);
-	}
+	virtual TransferMatrix getTransferMatrixAtFrequency(double f) = 0;
 
 	double capacitance; // in pF
 };
 
+class SeriesCapacitor : public Capacitor {
+public:
+	SeriesCapacitor(double c) : Capacitor(c) {}
+
+	TransferMatrix getTransferMatrixAtFrequency(double f) override {
+		return TransferMatrix(1, ComplexNumber(0, -xc(capacitance, f)), 0, 1);
+	}
+};
+
+class ShuntCapacitor : public Capacitor {
+public:
+	ShuntCapacitor(double c) : Capacitor(c) {}
+
+	TransferMatrix getTransferMatrixAtFrequency(double f) override {
+		return TransferMatrix(1, 0, ComplexNumber(0, -1.0/xc(capacitance, f)), 1);
+	}
+};
+
+
+
 class Inductor : public TwoPortElement {
 public:
-
 	Inductor(double l) : inductance(l) {}
 
-	TransferMatrix getSeriesTransferMatrixAtFrequency(double f) override {
-		return TransferMatrix(1, ComplexNumber(0, -xl(inductance/1000.0, f)), 0, 1);
-	}
-
-	TransferMatrix getShuntTransferMatrixAtFrequency(double f) override {
-		return TransferMatrix(1, 0, ComplexNumber(0, -1.0/xl(inductance/1000.0, f)), 1);
-	}
+	virtual TransferMatrix getTransferMatrixAtFrequency(double f) = 0;
 
 	double inductance; // in nanohenries
 };
 
+class SeriesInductor : public Inductor {
+public:
+	SeriesInductor(double l) : Inductor(l) {}
+
+	TransferMatrix getTransferMatrixAtFrequency(double f) override {
+		return TransferMatrix(1, ComplexNumber(0, -xl(inductance/1000.0, f)), 0, 1);
+	}
+};
+
+class ShuntInductor : public Inductor {
+public:
+	ShuntInductor(double l) : Inductor(l) {}
+
+	TransferMatrix getTransferMatrixAtFrequency(double f) override {
+		return TransferMatrix(1, 0, ComplexNumber(0, -1.0/xl(inductance/1000.0, f)), 1);
+	}
+};
+
 
 int main() {
-	// ComplexNumber c(1, 2.2);
-	// std::cout << "Hello, world! Here's a complex number: " << c << std::endl;
 
-	// Resistor r(100);
-	// TransferMatrix m1 = r.getSeriesTransferMatrixAtFrequency(100);
-	// TransferMatrix m2 = r.getShuntTransferMatrixAtFrequency(100);
-	// std::cout << "Here's a series transfer matrix: " << std::endl << m1 << std::endl;
-	// std::cout << "Here's a shunt transfer matrix: " << std::endl << m2 << std::endl;
-
-	// Capacitor cap(100);
-	// TransferMatrix m3 = cap.getSeriesTransferMatrixAtFrequency(1000000);
-	// TransferMatrix m4 = cap.getShuntTransferMatrixAtFrequency(1000000);
-
-	// std::cout << "Here's a series capacitor transfer matrix: " << std::endl << m3 << std::endl;
-	// std::cout << "Here's a shunt capacitor transfer matrix: " << std::endl << m4 << std::endl;
-
-	// double capacitance = 100.0;
-	// std::cout << "Xc: " << xc(frequency, capacitance) << std::endl;
-
-	// TransferMatrix a(1, 2, 3, 4), b(5, 6, 7, 8);
-	// TransferMatrix cc = a*b;
-	// std::cout << "Multiplication result: " << std::endl << cc << std::endl;
-
-	// ----
-
-	Capacitor c1(80.35);
-	Inductor l1(44.11);
-	Capacitor c2(106.16);
-	Inductor l2(46.15);
-	Capacitor c3(107.48);
-	Inductor l3(46.15);
-	Capacitor c4(106.16);
-	Inductor l4(44.11);
-	Capacitor c5(80.35);
-	Resistor r1(50);
+	ShuntCapacitor c1(80.35);
+	SeriesInductor l1(44.11);
+	ShuntCapacitor c2(106.16);
+	SeriesInductor l2(46.15);
+	ShuntCapacitor c3(107.48);
+	SeriesInductor l3(46.15);
+	ShuntCapacitor c4(106.16);
+	SeriesInductor l4(44.11);
+	ShuntCapacitor c5(80.35);
+	SeriesResistor rSource(50);
+	ShuntResistor rLoad(50);
 
 	for (double frequency = 0; frequency <= 220000000; frequency += 200000) {
-		TransferMatrix filter = r1.getSeriesTransferMatrixAtFrequency(frequency) *
-								c1.getShuntTransferMatrixAtFrequency(frequency) * 
-								l1.getSeriesTransferMatrixAtFrequency(frequency) *
-								c2.getShuntTransferMatrixAtFrequency(frequency) * 
-								l2.getSeriesTransferMatrixAtFrequency(frequency) *
-								c3.getShuntTransferMatrixAtFrequency(frequency) * 
-								l3.getSeriesTransferMatrixAtFrequency(frequency) *
-								c4.getShuntTransferMatrixAtFrequency(frequency) * 
-								l4.getSeriesTransferMatrixAtFrequency(frequency) *
-								c5.getShuntTransferMatrixAtFrequency(frequency) * 
-								r1.getShuntTransferMatrixAtFrequency(frequency);
-
-		// std::cout << "A is: " << std::endl << tm1 << std::endl;
-		// std::cout << "B is: " << std::endl << tm2 << std::endl;
-
-		// std::cout << "Filter matrix is: " << std::endl << filter << std::endl;
-		// double output = 1.0 / magnitude(filter.A);
-		// std::cout << frequency << "\t"  << std::fixed << std::setprecision(6) <<  output << std::setprecision(0) << std::endl;
-
-		// VoltageAndCurrent input(1, 0);
-		// VoltageAndCurrent output = filter * input;
+		TransferMatrix filter = rSource.getTransferMatrixAtFrequency(frequency) *
+								c1.getTransferMatrixAtFrequency(frequency) * 
+								l1.getTransferMatrixAtFrequency(frequency) *
+								c2.getTransferMatrixAtFrequency(frequency) * 
+								l2.getTransferMatrixAtFrequency(frequency) *
+								c3.getTransferMatrixAtFrequency(frequency) * 
+								l3.getTransferMatrixAtFrequency(frequency) *
+								c4.getTransferMatrixAtFrequency(frequency) * 
+								l4.getTransferMatrixAtFrequency(frequency) *
+								c5.getTransferMatrixAtFrequency(frequency) * 
+								rLoad.getTransferMatrixAtFrequency(frequency);
 
 
 		double outVoltage = 1.0/magnitude(filter.A);
 		double outGain = 20.0 * log10(outVoltage); // out/in
 		double outPhase = phase(filter.A);
-		// std::cout << "Filter output at " << frequency << " Hz is: " << std::fixed << std::setprecision(6) << outVoltage << " (" << outGain << " dB)" << std::endl;
-		// std::cout << "Filter output phase at " << frequency << " Hz is: " << std::fixed << std::setprecision(6) << phase(filter.A) << std::endl;
+
 		std::cout << (frequency/1000000.0) << "\t" << outGain << "\t" << outPhase << std::endl;
 	}
-
-	// std::cout << "Xc= " << xc(47000, 10000) << std::endl;
-
-	// Resistor r1(100), r2(200);
-	// for (frequency = 100; frequency < 1000; frequency += 100) {
-	// 	TransferMatrix filter = r1.getSeriesTransferMatrixAtFrequency(frequency) * 
-	// 							r2.getShuntTransferMatrixAtFrequency(frequency);
-	// 	// std::cout << "Filter matrix is: " << std::endl << filter << std::endl;
-	// 	double output = 1.0 / magnitude(filter.A);
-	// 	std::cout << frequency << "\t"  << std::fixed << std::setprecision(6) <<  output << std::setprecision(0) << std::endl;
-	// }
-
-	// std::cout << "Series transfer matrix is: " << std::endl << rc1.getSeriesTransferMatrixAtFrequency(frequency) << std::endl;
-	// std::cout << "Shunt transfer matrix is: " << std::endl << rc1.getShuntTransferMatrixAtFrequency(frequency) << std::endl;
-	// std::cout << "Filter matrix is: " << std::endl << filter << std::endl;
-
-	// VoltageAndCurrent input(1, 0);
-	// VoltageAndCurrent output = filter * input;
-
-	// std::cout << "Filter output at " << frequency << " Hz is: " << std::endl << output << std::endl;
-
-
-	// TransferMatrix n12(
-	// 	ComplexNumber(-7,0), ComplexNumber(0, -4), 
-	// 	ComplexNumber(0, 2), ComplexNumber(1, 0)
-	// );
-	// TransferMatrix n3(
-	// 	ComplexNumber(1,0), ComplexNumber(0, 3), 
-	// 	ComplexNumber(0, 0), ComplexNumber(1, 0)
-	// );
-
-	// TransferMatrix n4(
-	// 	ComplexNumber(1,0), ComplexNumber(0, 0), 
-	// 	ComplexNumber(0, -2), ComplexNumber(1, 0)
-	// );
-
-	// TransferMatrix n123 = n12*n3;
-	// std::cout << "n123 matrix is: " << std::endl << n123 << std::endl;
-
-	// TransferMatrix n1234 = n123*n4;
-	// std::cout << "n1234 matrix is: " << std::endl << n1234 << std::endl;
-
-	// ComplexNumber cc1(0, 2), cc2(0, 3);
-	// std::cout << "Multiplication result is : " << std::endl << cc1*cc2 << std::endl;
-
-	// ComplexNumber cc3(1, 0), cc4(1, 0);
-	// std::cout << "Multiplication result is : " << std::endl << cc3*cc4 << std::endl;
-
-	// ComplexNumber sum = cc1*cc2 + cc3*cc4;
-	// std::cout << "Result is : " << std::endl << sum << std::endl;
-
 }
